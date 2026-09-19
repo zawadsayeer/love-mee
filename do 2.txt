@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do You Love Me?</title>
+<style>
+  :root{
+    --bg:#09070d;
+    --panel:#100d16;
+    --border:#27202f;
+    --pink:#ff79b7;
+    --coral:#ff6f9f;
+    --text:#f7eaf2;
+    --muted:#8e7c8b;
+  }
+
+  *{box-sizing:border-box}
+  html,body{width:100%;height:100%;margin:0}
+
+  body{
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(255,74,151,.10), transparent 35%),
+      radial-gradient(circle at 20% 90%, rgba(139,65,255,.07), transparent 30%),
+      var(--bg);
+    color:var(--text);
+    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+
+  .window{
+    position:relative;
+    width:min(92vw,520px);
+    min-height:330px;
+    padding:26px 24px 30px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:rgba(16,13,22,.92);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.015) inset,
+      0 25px 80px rgba(0,0,0,.55),
+      0 0 45px rgba(255,80,150,.07);
+    text-align:center;
+  }
+
+  .titlebar{
+    position:absolute;
+    left:0;right:0;top:0;
+    height:34px;
+    display:flex;
+    align-items:center;
+    padding:0 13px;
+    border-bottom:1px solid var(--border);
+    color:#a992a3;
+    font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.3px;
+  }
+
+  .dots{display:flex;gap:6px;margin-right:10px}
+  .dot{width:7px;height:7px;border-radius:50%;background:#3a303c}
+  .dot:first-child{background:#ff6d9f}
+
+  h1{
+    margin:48px 0 12px;
+    font-size:clamp(28px,7vw,42px);
+    line-height:1.1;
+    letter-spacing:-1.4px;
+  }
+
+  .subtitle{
+    margin:0 auto;
+    max-width:390px;
+    color:var(--muted);
+    font-size:14px;
+  }
+
+  #heartCanvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    border-radius:14px;
+  }
+
+  .actions{
+    position:relative;
+    z-index:3;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:18px;
+    margin-top:38px;
+    min-height:56px;
+  }
+
+  button{
+    border:0;
+    border-radius:10px;
+    padding:12px 26px;
+    font:700 14px/1 Inter,system-ui,sans-serif;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, left .18s ease, top .18s ease;
+  }
+
+  #yesBtn{
+    color:#fff;
+    background:linear-gradient(135deg,#ff5f9f,#ff397f);
+    box-shadow:0 8px 25px rgba(255,62,130,.24);
+  }
+  #yesBtn:hover{
+    transform:translateY(-2px) scale(1.03);
+    box-shadow:0 12px 30px rgba(255,62,130,.34);
+  }
+
+  #noBtn{
+    position:relative;
+    color:#d9cbd4;
+    background:#1b1620;
+    border:1px solid #302735;
+  }
+
+  .result{
+    position:relative;
+    z-index:3;
+    height:25px;
+    margin-top:15px;
+    color:#ff86bb;
+    font-weight:700;
+    opacity:0;
+    transform:translateY(5px);
+    transition:.3s ease;
+  }
+  .result.show{opacity:1;transform:translateY(0)}
+
+  .heart{
+    position:fixed;
+    pointer-events:none;
+    animation:floatUp linear forwards;
+    opacity:.8;
+    filter:drop-shadow(0 0 7px rgba(255,70,140,.5));
+  }
+  @keyframes floatUp{
+    from{transform:translateY(0) scale(.7) rotate(0deg);opacity:0}
+    15%{opacity:.8}
+    to{transform:translateY(-110vh) scale(1.2) rotate(25deg);opacity:0}
+  }
+
+  .hint{
+    position:absolute;
+    bottom:13px;
+    left:0;right:0;
+    color:#5f5360;
+    font-size:11px;
+  }
+
+  @media(max-width:500px){
+    .window{min-height:310px;padding-left:18px;padding-right:18px}
+  }
+</style>
+</head>
+<body>
+<section class="window" id="window">
+  <canvas id="heartCanvas"></canvas>
+
+  <div class="titlebar">
+    <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    LOVE — window
+  </div>
+
+  <h1 id="title">Do you love me? ❤️</h1>
+  <p class="subtitle">There is only one correct answer... but you can try the other one 😏</p>
+
+  <div class="actions">
+    <button id="yesBtn">YES 💗</button>
+    <button id="noBtn">NO</button>
+  </div>
+
+  <div class="result" id="result">Yippee!!! 💕</div>
+  <div class="hint">made with love ✦</div>
+</section>
+
+<script>
+const noBtn = document.getElementById("noBtn");
+const yesBtn = document.getElementById("yesBtn");
+const title = document.getElementById("title");
+const result = document.getElementById("result");
+const win = document.getElementById("window");
+
+function moveNoButton(){
+  const area = win.getBoundingClientRect();
+  const maxX = Math.max(30, area.width / 2 - 90);
+  const maxY = 65;
+
+  const x = (Math.random() * 2 - 1) * maxX;
+  const y = (Math.random() * 2 - 1) * maxY;
+
+  noBtn.style.transform = `translate(${x}px, ${y}px)`;
+}
+
+["mouseenter","pointerdown","touchstart"].forEach(evt=>{
+  noBtn.addEventListener(evt, e=>{
+    if(evt !== "mouseenter") e.preventDefault();
+    moveNoButton();
+  }, {passive:false});
+});
+
+yesBtn.addEventListener("click", ()=>{
+  title.textContent = "I knew it! ❤️";
+  result.textContent = "Yippee!!! You made my day 💕";
+  result.classList.add("show");
+  yesBtn.textContent = "LOVE YOU 💖";
+  yesBtn.style.transform = "scale(1.08)";
+  rainHearts(42);
+});
+
+function rainHearts(count=18){
+  for(let i=0;i<count;i++){
+    setTimeout(()=>{
+      const h=document.createElement("div");
+      h.className="heart";
+      h.textContent=["♥","❤","💗","💖","💕"][Math.floor(Math.random()*5)];
+      h.style.left=(Math.random()*100)+"vw";
+      h.style.top=(88+Math.random()*15)+"vh";
+      h.style.fontSize=(12+Math.random()*22)+"px";
+      h.style.animationDuration=(2.8+Math.random()*3.5)+"s";
+      document.body.appendChild(h);
+      setTimeout(()=>h.remove(),6500);
+    }, i*45);
+  }
+}
+
+// Subtle canvas hearts in the background
+const canvas=document.getElementById("heartCanvas");
+const ctx=canvas.getContext("2d");
+let particles=[];
+function resize(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  canvas.width=win.clientWidth*dpr;
+  canvas.height=win.clientHeight*dpr;
+  canvas.style.width=win.clientWidth+"px";
+  canvas.style.height=win.clientHeight+"px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function spawn(){
+  particles.push({
+    x:Math.random()*win.clientWidth,
+    y:win.clientHeight+8,
+    s:5+Math.random()*6,
+    vy:.25+Math.random()*.45,
+    a:.1+Math.random()*.25
+  });
+}
+function drawHeart(x,y,s,a){
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.fillStyle="#ff79b7";
+  ctx.beginPath();
+  ctx.moveTo(x,y+s*.3);
+  ctx.bezierCurveTo(x-s*1.5,y-s*.45,x-s*.7,y-s*1.25,x,y-s*.55);
+  ctx.bezierCurveTo(x+s*.7,y-s*1.25,x+s*1.5,y-s*.45,x,y+s*.3);
+  ctx.fill();
+  ctx.restore();
+}
+function animate(){
+  ctx.clearRect(0,0,win.clientWidth,win.clientHeight);
+  if(Math.random()<.08) spawn();
+  particles.forEach(p=>{p.y-=p.vy; p.x+=Math.sin(p.y/28)*.15; drawHeart(p.x,p.y,p.s,p.a)});
+  particles=particles.filter(p=>p.y>-20);
+  requestAnimationFrame(animate);
+}
+window.addEventListener("resize",resize);
+resize(); animate();
+</script>
+</body>
+</html>
